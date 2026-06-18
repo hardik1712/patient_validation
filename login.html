@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Secure Admin Login for FracAnnotate Dashboard">
+  <title>FracAnnotate Admin Login</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Custom luxury login styling overlaying clinical variables */
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, #161922 0%, #0f1117 100%);
+      min-height: 100vh;
+      margin: 0;
+      padding: 24px;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 440px;
+      perspective: 1000px;
+      animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .login-card {
+      background: rgba(28, 31, 46, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      padding: 48px 40px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 
+                  0 0 40px rgba(0, 180, 216, 0.05);
+      text-align: center;
+      transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .login-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 
+                  0 0 50px rgba(0, 180, 216, 0.08);
+    }
+
+    .login-header {
+      margin-bottom: 32px;
+    }
+
+    .login-logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      margin-bottom: 20px;
+      box-shadow: 0 8px 20px rgba(0, 180, 216, 0.3);
+    }
+
+    .login-logo svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .login-title {
+      font-size: 1.8rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #ffffff 30%, var(--text-secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    .login-subtitle {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .input-wrapper {
+      position: relative;
+      margin-bottom: 24px;
+      text-align: left;
+    }
+
+    .input-wrapper label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .password-input-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .password-input-container input {
+      width: 100%;
+      padding: 14px 16px;
+      padding-right: 48px;
+      background: rgba(15, 17, 23, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: var(--text-primary);
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .password-input-container input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(0, 180, 216, 0.2);
+      background: rgba(15, 17, 23, 0.9);
+    }
+
+    /* Error Shake Animation */
+    .shake {
+      animation: shake 0.5s ease-in-out;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
+      20%, 40%, 60%, 80% { transform: translateX(6px); }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .btn-login {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--accent), #0096c7);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 14px rgba(0, 180, 216, 0.25);
+    }
+
+    .btn-login:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 180, 216, 0.4);
+      background: linear-gradient(135deg, #00c3eb, #00a8e0);
+    }
+
+    .btn-login:active {
+      transform: translateY(0);
+    }
+
+    .btn-login:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .error-msg {
+      background: rgba(239, 71, 111, 0.15);
+      border: 1px solid var(--error);
+      color: #ff6b8b;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      margin-bottom: 24px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .error-msg.show {
+      display: flex;
+      animation: fadeIn 0.3s ease;
+    }
+
+    /* Back Link */
+    .back-link {
+      display: inline-block;
+      margin-top: 24px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.85rem;
+      transition: color 0.2s ease;
+    }
+
+    .back-link:hover {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-container">
+    <div class="login-card" id="loginCard">
+      <div class="login-header">
+        <div class="login-logo">
+          <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="28" height="28" rx="8" fill="url(#hg)"/>
+            <path d="M8 20V8h3v4.5h6V8h3v12h-3v-5h-6v5H8z" fill="#fff"/>
+            <defs>
+              <linearGradient id="hg" x1="0" y1="0" x2="28" y2="28">
+                <stop stop-color="#00b4d8"/>
+                <stop offset="1" stop-color="#06d6a0"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h1 class="login-title">Dashboard Unlock</h1>
+        <p class="login-subtitle">Enter admin password to view rankings</p>
+      </div>
+
+      <div class="error-msg" id="errorMsg">
+        <span>⚠</span> <span id="errorText">Incorrect password. Please try again.</span>
+      </div>
+
+      <form id="loginForm">
+        <div class="input-wrapper">
+          <label for="password">Admin Password</label>
+          <div class="password-input-container">
+            <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
+          </div>
+        </div>
+
+        <button type="submit" class="btn-login" id="submitBtn">Unlock Dashboard</button>
+      </form>
+
+      <a href="/" class="back-link">← Return to Annotation App</a>
+    </div>
+  </div>
+
+  <script>
+    const loginForm = document.getElementById('loginForm');
+    const passwordInput = document.getElementById('password');
+    const errorMsg = document.getElementById('errorMsg');
+    const errorText = document.getElementById('errorText');
+    const loginCard = document.getElementById('loginCard');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Auto focus password input
+    window.addEventListener('DOMContentLoaded', () => {
+      passwordInput.focus();
+    });
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      // Clear previous error states
+      errorMsg.classList.remove('show');
+      loginCard.classList.remove('shake');
+      
+      const password = passwordInput.value;
+      if (!password) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Verifying...';
+
+      try {
+        const response = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          // Redirect to dashboard
+          window.location.href = '/dashboard.html';
+        } else {
+          showError(data.error || 'Authentication failed');
+        }
+      } catch (err) {
+        showError('Server connection error. Please try again.');
+        console.error(err);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Unlock Dashboard';
+      }
+    });
+
+    function showError(msg) {
+      errorText.textContent = msg;
+      errorMsg.classList.add('show');
+      loginCard.classList.add('shake');
+      passwordInput.select();
+      
+      // Remove shake class after animation completes
+      setTimeout(() => {
+        loginCard.classList.remove('shake');
+      }, 500);
+    }
+  </script>
+</body>
+</html>

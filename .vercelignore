@@ -1,0 +1,19 @@
+# Large files that should not be deployed to Vercel
+balanced_augmented_dataset.zip
+balanced_augmented_dataset
+database.sqlite
+node_modules
+__MACOSX
+responses_cache.json
+
+# Dev/scratch files
+*.log
+raw_*.html
+raw_*.css
+survey_*.txt
+survey_*.html
+clean_strings.txt
+chunk_*.js
+fetch_survey.js
+grep_js.js
+parse_next_payload.js

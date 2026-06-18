@@ -1,0 +1,20 @@
+{
+  "name": "patient_validation",
+  "version": "1.0.0",
+  "description": "A client-side web application for evaluating and ranking AI-generated bone fracture explanations across 4 different AI sources (Gemini, MedGemma, Ollama, and a custom model).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "sqlite3": "^6.0.1"
+  }
+}

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Bone Fracture Annotation & AI Response Ranking Tool for medical imaging research">
+  <title>FracAnnotate — Bone Fracture AI Response Ranking</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- JSZip for reading ZIP files client-side -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- SortableJS for drag-and-drop card reordering -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+</head>
+<body>
+
+  <!-- ═══ Header (hidden on landing) ═══ -->
+  <header class="app-header" id="appHeader" style="display:none">
+    <div class="logo">
+      <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="28" height="28" rx="8" fill="url(#hg)"/>
+        <path d="M8 20V8h3v4.5h6V8h3v12h-3v-5h-6v5H8z" fill="#fff"/>
+        <defs><linearGradient id="hg" x1="0" y1="0" x2="28" y2="28"><stop stop-color="#00b4d8"/><stop offset="1" stop-color="#06d6a0"/></linearGradient></defs>
+      </svg>
+      FracAnnotate
+    </div>
+    <div class="header-progress" style="display:none">
+      <span id="headerProgressText">0 / 35</span>
+      <div class="header-progress-bar">
+        <div class="header-progress-fill" id="headerProgressFill" style="width:0%"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══ Resume Modal ═══ -->
+  <div class="modal-overlay" id="resumeModal">
+    <div class="modal-box">
+      <h3>Resume Session?</h3>
+      <p>A previous annotation session was found.<br><strong id="resumeCount">0 / 35</strong></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="resumeNo">Start Fresh</button>
+        <button class="btn btn-primary" id="resumeYes" style="width:auto">Resume</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Screen 0: Landing / Hero ═══ -->
+  <div class="landing-screen active" id="landingScreen">
+    <!-- Animated background grid -->
+    <div class="landing-bg-grid"></div>
+    <!-- Floating orbs -->
+    <div class="landing-orb orb-1"></div>
+    <div class="landing-orb orb-2"></div>
+    <div class="landing-orb orb-3"></div>
+
+    <div class="landing-content">
+      <!-- Logo / Brand -->
+      <div class="landing-logo-wrap">
+        <div class="landing-logo">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="12" fill="url(#lg)"/>
+            <path d="M11 29V11h4.5v6.5h9V11H29v18h-4.5v-7.5h-9V29H11z" fill="#fff"/>
+            <defs><linearGradient id="lg" x1="0" y1="0" x2="40" y2="40"><stop stop-color="#00b4d8"/><stop offset="1" stop-color="#06d6a0"/></linearGradient></defs>
+          </svg>
+        </div>
+        <span class="landing-brand">FracAnnotate</span>
+      </div>
+
+      <!-- Hero Heading -->
+      <h1 class="landing-title">
+        Advancing AI in<br>
+        <span class="landing-title-gradient">Medical Imaging</span>
+      </h1>
+      <p class="landing-subtitle">
+        A clinical research study evaluating AI-generated bone fracture explanations.<br>
+        Your expert annotations help benchmark and improve AI diagnostic tools.
+      </p>
+
+      <!-- Stats Strip -->
+      <div class="landing-stats">
+        <div class="landing-stat">
+          <span class="landing-stat-value">35</span>
+          <span class="landing-stat-label">X-Ray Images</span>
+        </div>
+        <div class="landing-stat-divider"></div>
+        <div class="landing-stat">
+          <span class="landing-stat-value">4</span>
+          <span class="landing-stat-label">AI Models</span>
+        </div>
+        <div class="landing-stat-divider"></div>
+        <div class="landing-stat">
+          <span class="landing-stat-value">~20</span>
+          <span class="landing-stat-label">Minutes</span>
+        </div>
+      </div>
+
+      <!-- Feature Pills -->
+      <div class="landing-pills">
+        <div class="landing-pill">
+          <svg viewBox="0 0 20 20" fill="currentColor" width="14"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm1 11H9V9h2v4zm0-6H9V5h2v2z"/></svg>
+          Blinded evaluation
+        </div>
+        <div class="landing-pill">
+          <svg viewBox="0 0 20 20" fill="currentColor" width="14"><path d="M3 4a1 1 0 00-1 1v1a1 1 0 001 1h14a1 1 0 001-1V5a1 1 0 00-1-1H3zm0 6a1 1 0 00-1 1v1a1 1 0 001 1h14a1 1 0 001-1v-1a1 1 0 00-1-1H3zm0 6a1 1 0 00-1 1v1a1 1 0 001 1h14a1 1 0 001-1v-1a1 1 0 00-1-1H3z"/></svg>
+          Drag-to-rank
+        </div>
+        <div class="landing-pill">
+          <svg viewBox="0 0 20 20" fill="currentColor" width="14"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Auto-saved progress
+        </div>
+        <div class="landing-pill">
+          <svg viewBox="0 0 20 20" fill="currentColor" width="14"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"/></svg>
+          Gemini · MedGemma · Llama
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <button class="landing-cta" id="landingStartBtn">
+        Begin Annotation Study
+        <svg viewBox="0 0 20 20" fill="currentColor" width="20"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+      </button>
+
+      <p class="landing-disclaimer">
+        Anonymised study — no personal data is stored beyond your chosen annotator ID.
+      </p>
+    </div>
+  </div>
+
+  <!-- ═══ Lightbox ═══ -->
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close">&times;</button>
+    <img id="lightboxImg" src="" alt="Full-size X-ray">
+  </div>
+
+  <!-- ═══ Screen 1: Welcome / Homescreen ═══ -->
+  <div class="welcome-screen" id="welcomeScreen">
+    <div class="welcome-card">
+      <h1>FracAnnotate</h1>
+      <p class="subtitle">Bone Fracture AI Response Ranking Tool<br>Evaluate and rank AI-generated fracture explanations</p>
+
+      <div class="form-group" id="annotatorGroup">
+        <label for="annotatorIdInput">Annotator Name / ID</label>
+        <input type="text" id="annotatorIdInput" placeholder="Enter your name or ID…">
+      </div>
+
+      <div id="zipFallback" style="display:none; margin-top:20px; border-top: 1px solid #333; padding-top: 16px;">
+        <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:16px;">
+          Images could not be loaded from the server.<br>
+          Please upload <strong>balanced_augmented_dataset.zip</strong> below to continue.
+        </p>
+
+        <label style="display:block;font-size:0.85rem;font-weight:600;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Dataset (ZIP file)</label>
+        <div class="zip-upload-area" id="zipUploadArea">
+          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 34V14h20v20H14z" stroke="currentColor" stroke-width="2" fill="none"/>
+            <path d="M24 20v8M20 24h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <p>Click or drag <strong>balanced_augmented_dataset.zip</strong> here</p>
+          <div class="filename" id="zipFilename"></div>
+          <input type="file" id="zipFileInput" accept=".zip">
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="startBtn">Begin Annotation Session</button>
+    </div>
+  </div>
+
+  <!-- ═══ Screen 2: Loading ═══ -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="loading-card">
+      <h2>Preparing Your Session</h2>
+      <p class="loading-subtitle">Fetching AI responses for all 35 images…</p>
+      <div class="loading-bar-container">
+        <div class="loading-bar-fill" id="loadingBarFill"></div>
+      </div>
+      <div class="loading-status" id="loadingStatus">Initializing…</div>
+      <div class="loading-log" id="loadingLog"></div>
+    </div>
+  </div>
+
+  <!-- ═══ Screen 3: Annotation ═══ -->
+  <div class="annotation-screen" id="annotationScreen">
+    <div class="annotation-container">
+      <!-- Left: Image -->
+      <div class="image-panel">
+        <div class="image-card">
+          <img id="annotationImage" src="" alt="Bone fracture X-ray">
+          <div class="image-info">
+            <span id="imageCounter">Image 1 of 35</span>
+            <span id="imageFilename" style="font-size:0.75rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Responses & Ranking -->
+      <div class="responses-panel">
+        <div class="responses-header">
+          Rank the responses <span class="hint">(1 = Best, 4 = Worst) — Drag or use dropdowns</span>
+        </div>
+
+        <div id="responseCards">
+          <!-- Cards injected by JS -->
+        </div>
+
+        <div class="validation-error" id="validationError">
+          ⚠ Please assign a unique rank (1–4) to each response before continuing.
+        </div>
+
+        <div class="comment-section">
+          <label for="commentBox">Comments (optional)</label>
+          <textarea id="commentBox" placeholder="Add any notes about this image or the responses…"></textarea>
+        </div>
+
+        <div class="nav-buttons">
+          <button class="btn btn-secondary" id="prevBtn" onclick="APP.goPrev()">← Previous</button>
+          <button class="btn btn-primary" id="nextBtn" onclick="APP.goNext()" style="width:auto;flex:2">Next Image →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Screen 4: Results ═══ -->
+  <div class="results-screen" id="resultsScreen">
+    <div class="results-card">
+      <h2>🎉 Annotation Complete!</h2>
+      <p class="results-subtitle">All 35 images have been ranked. Download your results below.</p>
+
+      <div class="results-actions">
+        <button class="btn btn-success" onclick="APP.downloadJSON()">📥 Download JSON</button>
+        <button class="btn btn-success" onclick="APP.downloadCSV()">📥 Download CSV</button>
+      </div>
+
+      <div class="results-table-wrap">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Image</th>
+              <th>Category</th>
+              <th>Gemini</th>
+              <th>Our Model</th>
+              <th>Ollama</th>
+              <th>MedGemma</th>
+              <th>Comment</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts (order matters) -->
+  <script src="data.js?v=3"></script>
+  <script src="api.js?v=3"></script>
+  <script src="app.js?v=3"></script>
+</body>
+</html>

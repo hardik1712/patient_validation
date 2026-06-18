@@ -1,0 +1,16 @@
+viewport
+width=device-width, initial-scale=1
+preload
+stylesheet
+script
+next-size-adjust
+description
+Evaluate AI-generated bug diagnoses against ground truth fixes
+256x256
+geist_a71539c9-module__T19VSG__variable geist_mono_8d43a2aa-module__8Li5zG__variable antialiased
+flex min-h-screen items-center justify-center
+font-mono text-sm
+color:var(--text-muted)
+:true}
+
+,{}]]
