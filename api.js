@@ -1,145 +1,16 @@
 // ─── API Fetching Functions ───
 
-async function fetchGeminiResponse(base64Image, apiKey, model = "gemini-3.5-flash") {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  const body = {
-    contents: [{
-      parts: [
-        { text: RADIOLOGIST_PROMPT },
-        { inlineData: { mimeType: "image/jpeg", data: base64Image } }
-      ]
-    }]
-  };
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
+async function fetchFromProxy(base64Image, model) {
+  const res = await fetch('/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, base64Image })
   });
-  if (!res.ok) throw new Error(`Gemini API ${res.status}: ${res.statusText}`);
   const json = await res.json();
-  return json.candidates?.[0]?.content?.parts?.[0]?.text || "[No response from Gemini]";
+  if (!res.ok) throw new Error(json.error || `Proxy error ${res.status}`);
+  return json.result;
 }
 
-// ─── MedGemma via Hugging Face Inference API (primary) ─────────────────────
-// Requires: HF token with "inference" permission + model access granted at
-//   https://huggingface.co/google/medgemma-4b-it
-//
-// If no HF token is provided, falls back to Google Generative Language API
-// (medgemma-4b-it → gemini-3.5-flash chain).
-// ─────────────────────────────────────────────────────────────────────────────
-async function fetchMedGemmaResponse(base64Image, apiKey, hfToken) {
-  // ── Path 1: Hugging Face Inference API ──────────────────────────────────
-  if (hfToken) {
-    const HF_MODEL = "google/medgemma-4b-it";
-    const HF_URL   = `https://api-inference.huggingface.co/models/${HF_MODEL}/v1/chat/completions`;
-    try {
-      const body = {
-        model: HF_MODEL,
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text",      text: RADIOLOGIST_PROMPT },
-              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
-            ]
-          }
-        ],
-        max_tokens: 1024
-      };
-      const res = await fetch(HF_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type":  "application/json",
-          "Authorization": `Bearer ${hfToken}`
-        },
-        body: JSON.stringify(body)
-      });
-      if (res.ok) {
-        const json = await res.json();
-        const text = json.choices?.[0]?.message?.content;
-        if (text) return `[MedGemma via HF] ${text}`;
-      } else {
-        const errBody = await res.text().catch(() => "");
-        console.warn(`HF MedGemma ${res.status}: ${errBody.substring(0, 200)}`);
-        // fall through to Google API path below
-      }
-    } catch (e) {
-      console.warn("HF MedGemma fetch error, falling back to Google API:", e.message);
-    }
-  }
-
-  // ── Path 2: Google Generative Language API ──────────────────────────────
-  // Tries medgemma-4b-it (if key has access) then gemini-3.5-flash as safety net.
-  const models = ["medgemma-4b-it", "gemini-3.5-flash"];
-  let lastErr;
-  for (const model of models) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const body = {
-        contents: [{
-          parts: [
-            { text: RADIOLOGIST_PROMPT },
-            { inlineData: { mimeType: "image/jpeg", data: base64Image } }
-          ]
-        }]
-      };
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
-      if (!res.ok) { lastErr = new Error(`${model} API ${res.status}`); continue; }
-      const json = await res.json();
-      const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) return text;
-      lastErr = new Error(`No text in ${model} response`);
-    } catch (e) { lastErr = e; }
-  }
-  throw lastErr;
-}
-
-async function fetchGroqLlamaResponse(base64Image, groqApiKey) {
-  const url = "https://openrouter.ai/api/v1/chat/completions";
-  const body = {
-    model: "meta-llama/llama-4-scout-17b-16e-instruct",
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "text", text: RADIOLOGIST_PROMPT },
-          { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
-        ]
-      }
-    ],
-    max_tokens: 1024
-  };
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${groqApiKey}`
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal
-    });
-    clearTimeout(timeout);
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => "");
-      throw new Error(`OpenRouter/Llama API ${res.status}: ${errBody.substring(0, 200)}`);
-    }
-    const json = await res.json();
-    return json.choices?.[0]?.message?.content || "[Empty Llama response from OpenRouter]";
-  } catch (e) {
-    clearTimeout(timeout);
-    if (e.name === "AbortError") {
-      return "[OpenRouter/Llama request timed out after 60s]";
-    }
-    throw e;
-  }
-}
 
 async function fetchOurModelResponse(base64Image, apiUrl, imagePath) {
   try {
@@ -181,10 +52,10 @@ async function fetchOurModelResponse(base64Image, apiUrl, imagePath) {
 async function fetchAllResponses(base64Image, imagePath, config) {
   const results = {};
   const tasks = [
-    { key: "Gemini",    fn: () => fetchGeminiResponse(base64Image, config.apiKey, config.geminiModel) },
-    { key: "MedGemma", fn: () => fetchMedGemmaResponse(base64Image, config.apiKey, config.hfToken) },
-    { key: "Llama",    fn: () => fetchGroqLlamaResponse(base64Image, config.groqApiKey) },
-    { key: "OurModel", fn: () => fetchOurModelResponse(base64Image, config.modelApi, imagePath) },
+    { key: "Gemini",    fn: () => fetchFromProxy(base64Image, 'Gemini') },
+    { key: "MedGemma",  fn: () => fetchFromProxy(base64Image, 'MedGemma') },
+    { key: "Llama",     fn: () => fetchFromProxy(base64Image, 'Llama') },
+    { key: "OurModel",  fn: () => fetchOurModelResponse(base64Image, config.modelApi, imagePath) },
   ];
 
   await Promise.all(tasks.map(async (task) => {

@@ -151,6 +151,108 @@ app.post('/api/responses', async (req, res) => {
   }
 });
 
+// ─── AI Proxy Endpoints ───
+const RADIOLOGIST_PROMPT = "You are a radiologist assistant. Look at this X-ray image and identify the fracture. Explain only the type and region of the fracture.";
+
+app.post('/api/generate', async (req, res) => {
+  const { model, base64Image } = req.body;
+  if (!model || !base64Image) {
+    return res.status(400).json({ error: 'Missing model or base64Image' });
+  }
+
+  const geminiKey = process.env.GEMINI_API_KEY;
+  const groqKey = process.env.OPENROUTER_API_KEY;
+  const hfToken = process.env.HF_TOKEN;
+
+  try {
+    if (model === 'Gemini') {
+      if (!geminiKey) throw new Error("GEMINI_API_KEY not configured on server.");
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiKey}`;
+      const body = {
+        contents: [{
+          parts: [
+            { text: RADIOLOGIST_PROMPT },
+            { inlineData: { mimeType: "image/jpeg", data: base64Image } }
+          ]
+        }]
+      };
+      const fetchRes = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      if (!fetchRes.ok) throw new Error(`Gemini API ${fetchRes.status}: ${fetchRes.statusText}`);
+      const json = await fetchRes.json();
+      const text = json.candidates?.[0]?.content?.parts?.[0]?.text || "[No response from Gemini]";
+      return res.json({ result: text });
+
+    } else if (model === 'MedGemma') {
+      if (!hfToken) throw new Error("HF_TOKEN not configured on server.");
+      const HF_MODEL = "google/medgemma-4b-it";
+      const HF_URL = `https://api-inference.huggingface.co/models/${HF_MODEL}/v1/chat/completions`;
+      const body = {
+        model: HF_MODEL,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "text", text: RADIOLOGIST_PROMPT },
+            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
+          ]
+        }],
+        max_tokens: 1024
+      };
+      const fetchRes = await fetch(HF_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${hfToken}`
+        },
+        body: JSON.stringify(body)
+      });
+      if (!fetchRes.ok) throw new Error(`HF MedGemma API ${fetchRes.status}`);
+      const json = await fetchRes.json();
+      const text = json.choices?.[0]?.message?.content || "[Empty MedGemma response]";
+      return res.json({ result: `[MedGemma via HF] ${text}` });
+
+    } else if (model === 'Llama') {
+      if (!groqKey) throw new Error("OPENROUTER_API_KEY not configured on server.");
+      const url = "https://openrouter.ai/api/v1/chat/completions";
+      const body = {
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        messages: [{
+          role: "user",
+          content: [
+            { type: "text", text: RADIOLOGIST_PROMPT },
+            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
+          ]
+        }],
+        max_tokens: 1024
+      };
+      const fetchRes = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${groqKey}`
+        },
+        body: JSON.stringify(body)
+      });
+      if (!fetchRes.ok) {
+        const errText = await fetchRes.text();
+        throw new Error(`OpenRouter API ${fetchRes.status}: ${errText.substring(0, 100)}`);
+      }
+      const json = await fetchRes.json();
+      const text = json.choices?.[0]?.message?.content || "[Empty Llama response]";
+      return res.json({ result: text });
+    }
+
+    return res.status(400).json({ error: 'Unknown model' });
+
+  } catch (e) {
+    console.error(`Proxy Error (${model}):`, e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Start server (local dev only; Vercel uses the exported app) ───
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
