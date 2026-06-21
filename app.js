@@ -225,20 +225,20 @@ const APP = {
     addLog("Checking backend for cached AI responses...");
 
     try {
-      const cacheRes = await fetch("/api/responses").catch(() => ({ ok: false }));
+      const cacheRes = await fetch("api/responses").catch(() => ({ ok: false }));
       let cacheData = null;
       if (cacheRes.ok) cacheData = await cacheRes.json();
 
       // If backend cache is empty or unavailable, fall back to the static responses_cache.json
       if (!cacheData) {
         addLog("Database cache empty. Checking static file cache...");
-        const staticRes = await fetch("/responses_cache.json").catch(() => ({ ok: false }));
+        const staticRes = await fetch("responses_cache.json").catch(() => ({ ok: false }));
         if (staticRes.ok) {
           cacheData = await staticRes.json();
           addLog("Loaded AI responses from static file cache!", "log-ok");
           
           // Try to seed the backend cache if we are connected to a running server
-          fetch("/api/responses", {
+          fetch("api/responses", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(cacheData)
@@ -264,7 +264,7 @@ const APP = {
         addLog("All responses fetched successfully!", "log-ok");
         
         // Save to cache so next users don't hit the API
-        await fetch("/api/responses", {
+        await fetch("api/responses", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(this.state.allResponses)
