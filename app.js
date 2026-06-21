@@ -225,29 +225,39 @@ const APP = {
     addLog("Checking backend for cached AI responses...");
 
     try {
-      const cacheRes = await fetch("api/responses").catch(() => ({ ok: false }));
       let cacheData = null;
-      if (cacheRes.ok) cacheData = await cacheRes.json();
 
-      // If backend cache is empty or unavailable, fall back to the static responses_cache.json
+      // 1. Check if the script preloaded the responses cache globally (failsafe for local file:// protocol)
+      if (typeof CACHED_RESPONSES !== "undefined") {
+        addLog("Loaded AI responses from preloaded script cache!", "log-ok");
+        cacheData = CACHED_RESPONSES;
+      }
+
+      // 2. Fallback: check the backend API cache
+      if (!cacheData) {
+        const cacheRes = await fetch("api/responses").catch(() => ({ ok: false }));
+        if (cacheRes.ok) cacheData = await cacheRes.json();
+      }
+
+      // 3. Fallback: check responses_cache.json via static file fetch
       if (!cacheData) {
         addLog("Database cache empty. Checking static file cache...");
         const staticRes = await fetch("responses_cache.json").catch(() => ({ ok: false }));
         if (staticRes.ok) {
           cacheData = await staticRes.json();
           addLog("Loaded AI responses from static file cache!", "log-ok");
-          
-          // Try to seed the backend cache if we are connected to a running server
-          fetch("api/responses", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(cacheData)
-          }).catch(() => console.warn("Could not auto-seed cache to backend"));
         }
       }
 
       if (cacheData) {
         this.state.allResponses = cacheData;
+        
+        // Try to seed the backend cache if it is empty and we are connected to a running server
+        fetch("api/responses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cacheData)
+        }).catch(() => console.warn("Could not auto-seed cache to backend"));
       } else {
         addLog("No cache found. Fetching from AI APIs directly...");
         this.state.allResponses = await fetchAllImageResponses(
