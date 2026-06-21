@@ -132,7 +132,16 @@ app.get('/api/results', async (req, res) => {
 // Endpoint to get/set cached AI responses (stored in DB for serverless)
 app.get('/api/responses', async (req, res) => {
   try {
-    const data = await db.getCache('ai_responses');
+    let data = await db.getCache('ai_responses');
+    if (!data) {
+      const fs = require('fs');
+      const cachePath = path.join(__dirname, 'responses_cache.json');
+      if (fs.existsSync(cachePath)) {
+        console.log('Database cache empty. Auto-seeding from responses_cache.json...');
+        data = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
+        await db.setCache('ai_responses', data);
+      }
+    }
     res.json(data); // null if not found
   } catch (e) {
     console.error('Cache read error:', e);

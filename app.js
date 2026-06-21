@@ -229,8 +229,24 @@ const APP = {
       let cacheData = null;
       if (cacheRes.ok) cacheData = await cacheRes.json();
 
+      // If backend cache is empty or unavailable, fall back to the static responses_cache.json
+      if (!cacheData) {
+        addLog("Database cache empty. Checking static file cache...");
+        const staticRes = await fetch("/responses_cache.json").catch(() => ({ ok: false }));
+        if (staticRes.ok) {
+          cacheData = await staticRes.json();
+          addLog("Loaded AI responses from static file cache!", "log-ok");
+          
+          // Try to seed the backend cache if we are connected to a running server
+          fetch("/api/responses", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(cacheData)
+          }).catch(() => console.warn("Could not auto-seed cache to backend"));
+        }
+      }
+
       if (cacheData) {
-        addLog("Loaded AI responses from server cache!", "log-ok");
         this.state.allResponses = cacheData;
       } else {
         addLog("No cache found. Fetching from AI APIs directly...");

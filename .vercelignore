@@ -4,7 +4,6 @@ balanced_augmented_dataset
 database.sqlite
 node_modules
 __MACOSX
-responses_cache.json
 
 # Dev/scratch files
 *.log
